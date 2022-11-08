@@ -60,7 +60,7 @@ y_test = np.asarray(y_test).astype(np.int32)
 #Load TFlite model
 import tflite_runtime.interpreter as tflite
 
-tflite_filename = 'model_quant.tflite'
+tflite_filename = 'model.tflite'
 
 def load_tflite_model(modelpath):
     interpreter = tflite.Interpreter(model_path=modelpath,
