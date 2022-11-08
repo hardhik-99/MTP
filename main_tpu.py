@@ -90,5 +90,5 @@ for i in range(x_test.shape[0]):
     print("Pred: ", y_pred[i], " True: ", y_test[i])
     
 print("TPU accuracy: ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
-
+print("Predicted anomaly: ", np.sum(y_pred))
 print("F1 score: ", f1_score(y_test, y_pred))
