@@ -10,6 +10,7 @@ import pandas as pd
 import os
 
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.layers import Embedding, LSTM, Dense, Bidirectional, Dropout
 from tensorflow.keras.preprocessing.text import Tokenizer
@@ -44,17 +45,13 @@ max_seq_len = max([len(x) for x in train_seq])
 
 x_train = np.array(pad_sequences(train_seq, maxlen=max_seq_len, padding='pre'))
 x_test = np.array(pad_sequences(valid_seq, maxlen=max_seq_len, padding='pre'))
-#x_test = np.array(pad_sequences(test_seq, maxlen=max_seq_len, padding='pre'))
 x_train = np.asarray(x_train)
 x_test = np.asarray(x_test)
-#x_test = np.asarray(x_test)
 
 y_train = np.array(train_labels)
 y_test = np.array(valid_labels)
-#y_test = np.array(test_labels)
 y_train = np.asarray(y_train).astype(np.int32)
 y_test = np.asarray(y_test).astype(np.int32)
-#y_test = np.asarray(y_test).astype(np.int32)
 
 #Training
 
@@ -63,16 +60,14 @@ total_log_keys = 29
 
 model = Sequential()
 model.add(Embedding(total_log_keys, embed_vec_len, input_length=max_seq_len))
-model.add(LSTM(30))
-#model.add(Dense(100))
-model.add(Dense(10))
+model.add(LSTM(50, return_sequences=True))
+model.add(LSTM(50))
 model.add(Dense(1, activation='sigmoid'))
 
 adam = Adam(lr=0.01)
 model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
 model.summary()
 history = model.fit(x_train, y_train, epochs=2, verbose=1)  
-#validation_data=(x_valid, y_valid), verbose=2)
 
 #Plot Model Accuracy
 
@@ -109,6 +104,7 @@ def convert_to_tflite(model, filename):
 
 model_tflite_filename = "model.tflite"
 convert_to_tflite(model, model_tflite_filename)
+
 
 """
 #Load TFlite model
