@@ -69,7 +69,7 @@ model.add(Dense(1, activation='sigmoid'))
 adam = Adam(lr=0.01)
 model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
 model.summary()
-history = model.fit(x_train, y_train, epochs=10, verbose=1)  
+history = model.fit(x_train, y_train, epochs=2, verbose=1)  
 #validation_data=(x_valid, y_valid), verbose=2)
 
 #Plot Model Accuracy
@@ -95,20 +95,18 @@ print("Test accuracy: ", test_acc)
 from sklearn.metrics import f1_score
 print("F1 score: ", f1_score(y_test, y_pred))
 
+#TFlite
+def convert_to_tflite(model, filename):
+    # Convert the tensorflow model into a tflite file.
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    tflite_model = converter.convert()
 
-#Save Model
+    # Save the model.
+    with open(filename, 'wb') as f:
+        f.write(tflite_model)
 
-save_path = r'D:\IIT KGP Study\EE 4yr\9th semester\MTP\MTP_code\save_model'
-
-tf.saved_model.save(model, save_path)
-
-#Convert TFlite
-
-converter = tf.lite.TFLiteConverter.from_saved_model(save_path) 
-tflite_model = converter.convert()
-
-with open('model.tflite', 'wb') as f:
-  f.write(tflite_model)
+model_tflite_filename = "model.tflite"
+convert_to_tflite(model, model_tflite_filename)
 
 """
 #Load TFlite model
