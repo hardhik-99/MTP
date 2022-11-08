@@ -7,6 +7,7 @@ Created on Tue Oct 18 10:58:05 2022
 
 import numpy as np
 import pandas as pd
+from sklearn.metrics import f1_score
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -81,6 +82,8 @@ y_pred = []
 for i in tqdm(range(x_test.shape[0])):
     pred = tpu_tflite_predict(interpreter, x_test[i])
     y_pred.append(pred.argmax(1)[0])
-    #print("Pred: ", y_pred[i], " True: ", y_test[i])
+    print("Pred: ", y_pred[i], " True: ", y_test[i])
     
 print("TPU accuracy: ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
+
+print("F1 score: ", f1_score(y_test, y_pred))
