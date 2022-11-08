@@ -81,6 +81,6 @@ y_pred = []
 for i in tqdm(range(x_test.shape[0])):
     pred = tpu_tflite_predict(interpreter, x_test[i])
     y_pred.append(pred.argmax(1)[0])
-    print("Pred: ", y_pred[i], " True: ", y_test[i])
+    #print("Pred: ", y_pred[i], " True: ", y_test[i])
     
 print("TPU accuracy: ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
