@@ -60,7 +60,7 @@ y_test = np.asarray(y_test).astype(np.int32)
 #Load TFlite model
 import tflite_runtime.interpreter as tflite
 
-tflite_filename = 'model.tflite'
+tflite_filename = 'model_quant.tflite'
 
 def load_tflite_model(modelpath):
     interpreter = tflite.Interpreter(model_path=modelpath,
@@ -86,8 +86,7 @@ for i in tqdm(range(x_test.shape[0])):
 """
 for i in range(x_test.shape[0]):
     pred = tpu_tflite_predict(interpreter, x_test[i])
-    print("pred frac: ", pred)
-    y_pred.append(pred.argmax(1)[0])
+    y_pred.append([1 if pred.argmax[0][0] < 0.5 else 0])
     print("Pred: ", y_pred[i], " True: ", y_test[i])
     
 print("TPU accuracy: ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
