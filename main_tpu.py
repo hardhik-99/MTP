@@ -86,6 +86,7 @@ for i in tqdm(range(x_test.shape[0])):
 """
 for i in range(x_test.shape[0]):
     pred = tpu_tflite_predict(interpreter, x_test[i])
+    print("pred frac: ", pred)
     y_pred.append(pred.argmax(1)[0])
     print("Pred: ", y_pred[i], " True: ", y_test[i])
     
