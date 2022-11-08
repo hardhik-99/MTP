@@ -7,7 +7,7 @@ Created on Tue Oct 18 10:58:05 2022
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import f1_score
+import os
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -15,7 +15,6 @@ from tensorflow.keras.layers import Embedding, LSTM, Dense, Bidirectional, Dropo
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam, SGD
-from tqdm import tqdm
 
 #Preprocessing
 
@@ -57,6 +56,61 @@ y_train = np.asarray(y_train).astype(np.int32)
 y_test = np.asarray(y_test).astype(np.int32)
 #y_test = np.asarray(y_test).astype(np.int32)
 
+#Training
+
+embed_vec_len = 64
+total_log_keys = 29
+
+model = Sequential()
+model.add(Embedding(total_log_keys, embed_vec_len, input_length=max_seq_len))
+model.add(LSTM(100))
+model.add(Dense(1, activation='sigmoid'))
+
+adam = Adam(lr=0.01)
+model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
+model.summary()
+history = model.fit(x_train, y_train, epochs=10, verbose=1)  
+#validation_data=(x_valid, y_valid), verbose=2)
+
+#Plot Model Accuracy
+
+import matplotlib.pyplot as plt
+
+def plot_graphs(history, string):
+    plt.plot(history.history[string])
+    plt.xlabel("Epochs")
+    plt.ylabel(string)
+    plt.show()
+    
+plot_graphs(history, 'accuracy')
+plot_graphs(history, 'loss')
+
+#Prediction
+
+y_pred = model.predict(x_test)
+y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
+test_acc = np.sum(y_pred == y_test) / len(y_test)
+print("Test accuracy: ", test_acc)
+
+from sklearn.metrics import f1_score
+print("F1 score: ", f1_score(y_test, y_pred))
+
+
+#Save Model
+
+save_path = r'D:\IIT KGP Study\EE 4yr\9th semester\MTP\MTP_code\save_model'
+
+tf.saved_model.save(model, save_path)
+
+#Convert TFlite
+
+converter = tf.lite.TFLiteConverter.from_saved_model(save_path) 
+tflite_model = converter.convert()
+
+with open('model.tflite', 'wb') as f:
+  f.write(tflite_model)
+
+"""
 #Load TFlite model
 import tflite_runtime.interpreter as tflite
 
@@ -71,19 +125,7 @@ def load_tflite_model(modelpath):
 interpreter = load_tflite_model(tflite_filename)
 
 #Run the model on TPU
-def tpu_tflite_predict(interpreter, data):
-    input_data = data.reshape(1, max_seq_len).astype(np.float32)
-    interpreter.set_tensor(interpreter.get_input_details()[0]['index'], input_data)
-    interpreter.invoke()
-    return interpreter.get_tensor(interpreter.get_output_details()[0]['index'])
+def tflite_predict(interpreter, data):
+    return
+"""
 
-y_pred = []
-
-for i in tqdm(range(x_test.shape[0])):
-    pred = tpu_tflite_predict(interpreter, x_test[i])
-    y_pred.append(pred.argmax(1)[0])
-    #print("Pred: ", y_pred[i], " True: ", y_test[i])
-    
-print("TPU accuracy: ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
-
-print("F1 score: ", f1_score(y_test, y_pred))
