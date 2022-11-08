@@ -81,7 +81,7 @@ y_pred = []
 
 for i in tqdm(range(x_test.shape[0])):
     pred = tpu_tflite_predict(interpreter, x_test[i])
-    y_pred.append(1 if pred[0][0] < 0.5 else 0)
+    y_pred.append(pred[0][0])
     #print("Pred: ", y_pred[i], " True: ", y_test[i])
 """
 for i in range(x_test.shape[0]):
@@ -89,7 +89,7 @@ for i in range(x_test.shape[0]):
     y_pred.append(1 if pred[0][0] < 0.5 else 0)
     print("Pred: ", y_pred[i], " True: ", y_test[i])
 """
-y_pred = np.array(y_pred)
+y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
 print("TPU accuracy: ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
 print("Predicted anomaly: ", np.sum(y_pred))
 print("F1 score: ", f1_score(y_test, y_pred))
