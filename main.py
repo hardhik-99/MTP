@@ -60,8 +60,7 @@ total_log_keys = 29
 
 model = Sequential()
 model.add(Embedding(total_log_keys, embed_vec_len, input_length=max_seq_len))
-model.add(LSTM(50, return_sequences=True))
-model.add(LSTM(50))
+model.add(Bidirectional(LSTM(50)))
 model.add(Dense(1, activation='sigmoid'))
 
 adam = Adam(lr=0.01)
