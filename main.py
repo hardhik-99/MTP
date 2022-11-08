@@ -10,6 +10,7 @@ import pandas as pd
 import os
 
 import tensorflow as tf
+from tensorflow import keras
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.layers import Embedding, LSTM, Dense, Bidirectional, Dropout
 from tensorflow.keras.preprocessing.text import Tokenizer
@@ -63,7 +64,9 @@ total_log_keys = 29
 
 model = Sequential()
 model.add(Embedding(total_log_keys, embed_vec_len, input_length=max_seq_len))
-model.add(LSTM(100))
+model.add(LSTM(30))
+#model.add(Dense(100))
+model.add(Dense(10))
 model.add(Dense(1, activation='sigmoid'))
 
 adam = Adam(lr=0.01)
@@ -107,6 +110,43 @@ def convert_to_tflite(model, filename):
 
 model_tflite_filename = "model.tflite"
 convert_to_tflite(model, model_tflite_filename)
+
+#Create quantized version
+batch_size = 1
+model.input.set_shape((batch_size,) + model.input.shape[1:])
+model.summary()
+
+# Our representative dataset is the same as the training dataset,
+# but the batch size must now be 1
+dataset_repr = keras.preprocessing.timeseries_dataset_from_array(
+    x_train,
+    y_train,
+    sequence_length=max_seq_len,
+    batch_size=batch_size,
+)
+
+def representative_data_gen():
+  # To ensure full coverage of possible inputs, we use the whole train set
+  for input_data, _ in dataset_repr.take(int(len(x_train))):
+    input_data = tf.cast(input_data, dtype=tf.float32)
+    yield [input_data]
+
+converter = tf.lite.TFLiteConverter.from_keras_model(model)
+# This enables quantization
+converter.optimizations = [tf.lite.Optimize.DEFAULT]
+# This sets the representative dataset for quantization
+converter.representative_dataset = representative_data_gen
+# This ensures that if any ops can't be quantized, the converter throws an error
+converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+# For full integer quantization, though supported types defaults to int8 only, we explicitly declare it for clarity
+converter.target_spec.supported_types = [tf.int8]
+# These set the input and output tensors to int8
+converter.inference_input_type = tf.uint8
+converter.inference_output_type = tf.uint8
+tflite_model_quant = converter.convert()
+
+with open('model_quant.tflite', 'wb') as f:
+  f.write(tflite_model_quant)
 
 """
 #Load TFlite model
