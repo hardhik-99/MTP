@@ -68,6 +68,19 @@ model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
 model.summary()
 history = model.fit(x_train, y_train, epochs=1, verbose=1)  
 
+#Plot Model Accuracy
+
+import matplotlib.pyplot as plt
+
+def plot_graphs(history, string):
+    plt.plot(history.history[string])
+    plt.xlabel("Epochs")
+    plt.ylabel(string)
+    plt.show()
+    
+plot_graphs(history, 'accuracy')
+plot_graphs(history, 'loss')
+
 #Prediction
 
 y_pred = model.predict(x_test)
@@ -92,8 +105,10 @@ def representative_data_gen():
 
 
 def convert_to_tflite(model, filename):
+    
     # Convert the tensorflow model into a tflite file.
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    """
     # This enables quantization
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     # This sets the representative dataset for quantization
@@ -107,7 +122,7 @@ def convert_to_tflite(model, filename):
     """
     # Set the optimization mode 
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    """
+    
     tflite_model = converter.convert()
 
     # Save the model.
