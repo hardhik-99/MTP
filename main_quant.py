@@ -68,19 +68,6 @@ model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
 model.summary()
 history = model.fit(x_train, y_train, epochs=1, verbose=1)  
 
-#Plot Model Accuracy
-
-import matplotlib.pyplot as plt
-
-def plot_graphs(history, string):
-    plt.plot(history.history[string])
-    plt.xlabel("Epochs")
-    plt.ylabel(string)
-    plt.show()
-    
-plot_graphs(history, 'accuracy')
-plot_graphs(history, 'loss')
-
 #Prediction
 
 y_pred = model.predict(x_test)
