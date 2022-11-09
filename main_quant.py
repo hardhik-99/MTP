@@ -90,21 +90,23 @@ print("Test accuracy: ", test_acc)
 
 from sklearn.metrics import f1_score
 print("F1 score: ", f1_score(y_test, y_pred))
-"""
-x_train_seq = pad_sequences(train_seq, maxlen=max_seq_len, padding='pre')
-dataset = tf.data.Dataset.from_tensor_slices(x_train_seq).batch(1)
+
+#x_train_seq = pad_sequences(train_seq, maxlen=max_seq_len, padding='pre')
+#dataset = tf.data.Dataset.from_tensor_slices(x_train_seq).batch(1)
+dataset = tf.keras.preprocessing.sequence.pad_sequences(
+    train_seq, maxlen=max_seq_len, dtype="int32", padding="pre", truncating="pre", value=0.0)
+
 #TFlite
 def representative_data_gen():
   # To ensure full coverage of possible inputs, we use the whole train set
   for input_data in dataset:
     input_data = tf.dtypes.cast(input_data, tf.float32)
     yield [input_data]
-"""
+
 
 def convert_to_tflite(model, filename):
     # Convert the tensorflow model into a tflite file.
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    """
     # This enables quantization
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
     # This sets the representative dataset for quantization
@@ -118,7 +120,7 @@ def convert_to_tflite(model, filename):
     """
     # Set the optimization mode 
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
-
+    """
     tflite_model = converter.convert()
 
     # Save the model.
@@ -128,12 +130,8 @@ def convert_to_tflite(model, filename):
 model_tflite_filename = "model_quant.tflite"
 convert_to_tflite(model, model_tflite_filename)
 
-
-"""
-#Load TFlite model
 import tflite_runtime.interpreter as tflite
-
-tflite_filename = 'model.tflite'
+from tqdm import tqdm
 
 def load_tflite_model(modelpath):
     interpreter = tflite.Interpreter(model_path=modelpath,
@@ -141,10 +139,25 @@ def load_tflite_model(modelpath):
     interpreter.allocate_tensors()
     return interpreter
 
-interpreter = load_tflite_model(tflite_filename)
+interpreter = load_tflite_model(model_tflite_filename)
 
 #Run the model on TPU
-def tflite_predict(interpreter, data):
-    return
-"""
+def tpu_tflite_predict(interpreter, data):
+    input_data = data.reshape(1, max_seq_len).astype(np.float32)
+    interpreter.set_tensor(interpreter.get_input_details()[0]['index'], input_data)
+    interpreter.invoke()
+    return interpreter.get_tensor(interpreter.get_output_details()[0]['index'])
+
+y_pred = []
+
+for i in tqdm(range(x_test.shape[0])):
+    pred = tpu_tflite_predict(interpreter, x_test[i])
+    y_pred.append(pred[0][0])
+    #print("Pred: ", y_pred[i], " True: ", y_test[i])
+
+y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
+print("TPU accuracy: ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
+print("Predicted anomaly: ", np.sum(y_pred))
+print("F1 score: ", f1_score(y_test, y_pred))
+
 
