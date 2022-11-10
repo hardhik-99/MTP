@@ -56,8 +56,8 @@ y_test = np.asarray(y_test).astype(np.int32)
 """
 y_test = np.array(train_labels)
 y_train = np.array(valid_labels)
-y_train = np.asarray(y_train).astype(np.int32)
-y_test = np.asarray(y_test).astype(np.int32)
+y_train = np.asarray(y_train).astype(np.int8)
+y_test = np.asarray(y_test).astype(np.int8)
 
 #Load TFlite model
 import tflite_runtime.interpreter as tflite
@@ -74,7 +74,8 @@ interpreter = load_tflite_model(tflite_filename)
 
 #Run the model on TPU
 def tpu_tflite_predict(interpreter, data):
-    input_data = data.reshape(1, max_seq_len).astype(np.float32)
+    #input_data = data.reshape(1, max_seq_len).astype(np.float32)
+    input_data = data.reshape(1, max_seq_len).astype(np.int8)
     interpreter.set_tensor(interpreter.get_input_details()[0]['index'], input_data)
     interpreter.invoke()
     return interpreter.get_tensor(interpreter.get_output_details()[0]['index'])
@@ -104,7 +105,8 @@ interpreter = load_tflite_model(tflite_filename)
 
 #Run the model on TPU
 def tpu_tflite_predict(interpreter, data):
-    input_data = data.reshape(1, max_seq_len).astype(np.float32)
+    #input_data = data.reshape(1, max_seq_len).astype(np.float32)
+    input_data = data.reshape(1, max_seq_len).astype(np.int8)
     interpreter.set_tensor(interpreter.get_input_details()[0]['index'], input_data)
     interpreter.invoke()
     return interpreter.get_tensor(interpreter.get_output_details()[0]['index'])
