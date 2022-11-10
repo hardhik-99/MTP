@@ -44,13 +44,18 @@ for i in range(len(test_seq)):
 
 max_seq_len = max([len(x) for x in train_seq])
 
-x_train = np.array(pad_sequences(train_seq, maxlen=max_seq_len, padding='pre'))
-x_test = np.array(pad_sequences(valid_seq, maxlen=max_seq_len, padding='pre'))
+x_test = np.array(pad_sequences(train_seq, maxlen=max_seq_len, padding='pre'))
+x_train = np.array(pad_sequences(valid_seq, maxlen=max_seq_len, padding='pre'))
 x_train = np.asarray(x_train)
 x_test = np.asarray(x_test)
-
+"""
 y_train = np.array(train_labels)
 y_test = np.array(valid_labels)
+y_train = np.asarray(y_train).astype(np.int32)
+y_test = np.asarray(y_test).astype(np.int32)
+"""
+y_test = np.array(train_labels)
+y_train = np.array(valid_labels)
 y_train = np.asarray(y_train).astype(np.int32)
 y_test = np.asarray(y_test).astype(np.int32)
 
