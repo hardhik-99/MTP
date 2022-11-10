@@ -7,6 +7,7 @@ Created on Tue Oct 18 10:58:05 2022
 
 import numpy as np
 import pandas as pd
+import time
 import os
 
 import tensorflow as tf
@@ -168,6 +169,15 @@ def convert_to_tflite_hybrid(model, filename):
 model_tflite_filename = "model_hybrid_quant.tflite"
 convert_to_tflite_hybrid(model, model_tflite_filename)
 
+#Prediction
+
+y_pred = model.predict(x_test)
+y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
+test_acc = np.sum(y_pred == y_test) / len(y_test)
+print("Test accuracy: ", test_acc)
+
+from sklearn.metrics import f1_score
+print("F1 score: ", f1_score(y_test, y_pred))
 
 """
 #Load TFlite model
