@@ -16,6 +16,7 @@ from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam, SGD
 from tqdm import tqdm
+import time
 
 #Preprocessing
 
@@ -56,7 +57,7 @@ y_test = np.asarray(y_test).astype(np.int32)
 #Load TFlite model
 import tflite_runtime.interpreter as tflite
 
-tflite_filename = 'model_quant.tflite'
+tflite_filename = 'model_no_quant.tflite'
 
 def load_tflite_model(modelpath):
     interpreter = tflite.Interpreter(model_path=modelpath,
@@ -75,17 +76,43 @@ def tpu_tflite_predict(interpreter, data):
 
 y_pred = []
 
+start_time = time.time()
 for i in tqdm(range(x_test.shape[0])):
     pred = tpu_tflite_predict(interpreter, x_test[i])
     y_pred.append(pred[0][0])
-    #print("Pred: ", y_pred[i], " True: ", y_test[i])
-"""
-for i in range(x_test.shape[0]):
-    pred = tpu_tflite_predict(interpreter, x_test[i])
-    y_pred.append(1 if pred[0][0] < 0.5 else 0)
-    print("Pred: ", y_pred[i], " True: ", y_test[i])
-"""
+
+print("---Pred time (no quant):  %s seconds ---" % (time.time() - start_time))
+    
 y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
-print("TPU accuracy: ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
-print("Predicted anomaly: ", np.sum(y_pred))
-print("F1 score: ", f1_score(y_test, y_pred))
+print("TPU accuracy (no quant): ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
+print("F1 score (no quant): ", f1_score(y_test, y_pred))
+
+tflite_filename = 'model_hybrid_quant.tflite'
+
+def load_tflite_model(modelpath):
+    interpreter = tflite.Interpreter(model_path=modelpath,
+                                     experimental_delegates=[tflite.load_delegate('libedgetpu.so.1')])
+    interpreter.allocate_tensors()
+    return interpreter
+
+interpreter = load_tflite_model(tflite_filename)
+
+#Run the model on TPU
+def tpu_tflite_predict(interpreter, data):
+    input_data = data.reshape(1, max_seq_len).astype(np.float32)
+    interpreter.set_tensor(interpreter.get_input_details()[0]['index'], input_data)
+    interpreter.invoke()
+    return interpreter.get_tensor(interpreter.get_output_details()[0]['index'])
+
+y_pred = []
+
+start_time = time.time()
+for i in tqdm(range(x_test.shape[0])):
+    pred = tpu_tflite_predict(interpreter, x_test[i])
+    y_pred.append(pred[0][0])
+
+print("---Pred time (hybrid quant):  %s seconds ---" % (time.time() - start_time))
+    
+y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
+print("TPU accuracy (hybrid quant): ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
+print("F1 score (hybrid quant): ", f1_score(y_test, y_pred))
