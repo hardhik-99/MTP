@@ -7,7 +7,11 @@ Created on Tue Oct 18 10:58:05 2022
 
 import numpy as np
 import pandas as pd
+import time
+
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from tqdm import tqdm
 
 import tensorflow as tf
 from tensorflow import keras
@@ -16,6 +20,9 @@ from tensorflow.keras.layers import Embedding, LSTM, Dense, Bidirectional, Dropo
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.optimizers import Adam, SGD
+
+tf.random.set_seed(5)
+np.random.seed(5)
 
 #Preprocessing
 
@@ -43,39 +50,73 @@ for i in range(len(test_seq)):
 
 max_seq_len = max([len(x) for x in train_seq])
 
-x_train = np.array(pad_sequences(train_seq, maxlen=max_seq_len, padding='pre'))
-x_test = np.array(pad_sequences(valid_seq, maxlen=max_seq_len, padding='pre'))
+#x_train = np.array(pad_sequences(train_seq, maxlen=max_seq_len, padding='pre'))
+#x_test = np.array(pad_sequences(valid_seq, maxlen=max_seq_len, padding='pre'))
+
+x_test = np.array(pad_sequences(train_seq, maxlen=max_seq_len, padding='pre'))
+x_train = np.array(pad_sequences(valid_seq, maxlen=max_seq_len, padding='pre'))
 x_train = np.asarray(x_train)
 x_test = np.asarray(x_test)
-
+"""
 y_train = np.array(train_labels)
 y_test = np.array(valid_labels)
 y_train = np.asarray(y_train).astype(np.int32)
 y_test = np.asarray(y_test).astype(np.int32)
+"""
+y_test = np.array(train_labels)
+y_train = np.array(valid_labels)
+y_train = np.asarray(y_train).astype(np.float32)
+y_test = np.asarray(y_test).astype(np.float32)
 
 #Training
 
 embed_vec_len = 64
 total_log_keys = 29
 
+x_train = x_train.reshape((len(valid_seq), max_seq_len, 1))
+x_test = x_test.reshape((len(train_seq), max_seq_len, 1))
+
 model = Sequential()
-model.add(Embedding(total_log_keys, embed_vec_len, input_length=max_seq_len))
-model.add(LSTM(50))
+#model.add(Embedding(total_log_keys, embed_vec_len, input_length=max_seq_len))
+model.add(LSTM(32, input_shape=(max_seq_len, 1)))
 model.add(Dense(1, activation='sigmoid'))
 
 adam = Adam(lr=0.01)
+#sgd = SGD(learning_rate=0.05)
 model.compile(loss='binary_crossentropy', optimizer=adam, metrics=['accuracy'])
 model.summary()
-history = model.fit(x_train, y_train, epochs=1, verbose=1)  
+history = model.fit(x_train, y_train, epochs=15, verbose=1)  
 
 #Plot Model Accuracy
 
 import matplotlib.pyplot as plt
+from matplotlib.pyplot import figure
 
+"""
 def plot_graphs(history, string):
-    plt.plot(history.history[string])
-    plt.xlabel("Epochs")
-    plt.ylabel(string)
+    figure(figsize=(8, 6), dpi=80)
+    plt.plot(np.arange(1,21), history.history[string], marker="x", linewidth=3, \
+             markersize=10)
+    plt.xlabel("Epochs", fontsize=20)
+    plt.ylabel(string, fontsize=20)
+    plt.xlim(1,20)
+    plt.xticks(np.arange(1,21, step=1), size=15)
+    plt.yticks(size=15)
+    plt.show()
+    
+plot_graphs(history, 'accuracy')
+plot_graphs(history, 'loss')
+"""
+def plot_graphs(history, string):
+    figure(figsize=(8, 6), dpi=80)
+    plt.plot(np.arange(1,16), history.history[string], marker="x", linewidth=3, \
+             markersize=10)
+    plt.xlabel("Epochs", fontsize=20)
+    plt.ylabel(string, fontsize=20)
+    plt.xlim(1,15)
+    plt.xticks(np.arange(1,16, step=1), size=15)
+    plt.yticks(size=15)
+    plt.grid()
     plt.show()
     
 plot_graphs(history, 'accuracy')
@@ -91,62 +132,110 @@ print("Test accuracy: ", test_acc)
 from sklearn.metrics import f1_score
 print("F1 score: ", f1_score(y_test, y_pred))
 
-#x_train_seq = pad_sequences(train_seq, maxlen=max_seq_len, padding='pre')
-#dataset = tf.data.Dataset.from_tensor_slices(x_train_seq).batch(1)
-dataset = tf.keras.preprocessing.sequence.pad_sequences(
-    train_seq, maxlen=max_seq_len, dtype="int32", padding="pre", truncating="pre", value=0.0)
-
-#TFlite
-def representative_data_gen():
-  # To ensure full coverage of possible inputs, we use the whole train set
-  for input_data in dataset:
-    input_data = tf.dtypes.cast(input_data, tf.float32)
-    yield [input_data]
-
-
-def convert_to_tflite(model, filename):
+# pred no quant
+def convert_to_tflite_noquant(model, filename):
     # Convert the tensorflow model into a tflite file.
     converter = tf.lite.TFLiteConverter.from_keras_model(model)
-    # This enables quantization
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    # This sets the representative dataset for quantization
-    converter.representative_dataset = representative_data_gen
-    # This ensures that if any ops can't be quantized, the converter throws an error
-    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-    
-    # These set the input and output tensors to int8
-    converter.inference_input_type = tf.uint8
-    converter.inference_output_type = tf.uint8
-    """
-    # Set the optimization mode 
-    converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    """
+
     tflite_model = converter.convert()
 
     # Save the model.
     with open(filename, 'wb') as f:
         f.write(tflite_model)
 
-model_tflite_filename = "model_quant.tflite"
-convert_to_tflite(model, model_tflite_filename)
+model_tflite_filename = "model_no_quant.tflite"
+convert_to_tflite_noquant(model, model_tflite_filename)
 
 
-"""
-#Load TFlite model
-import tflite_runtime.interpreter as tflite
+interpreter_noquant = tf.lite.Interpreter("model_no_quant.tflite")
+interpreter_noquant.allocate_tensors()
 
-tflite_filename = 'model.tflite'
+y_pred = []
 
-def load_tflite_model(modelpath):
-    interpreter = tflite.Interpreter(model_path=modelpath,
-                                     experimental_delegates=[tflite.load_delegate('libedgetpu.so.1')])
-    interpreter.allocate_tensors()
-    return interpreter
-
-interpreter = load_tflite_model(tflite_filename)
-
-#Run the model on TPU
 def tflite_predict(interpreter, data):
-    return
-"""
+    input_data = data.reshape((1, max_seq_len, 1)).astype(np.float32)
+    interpreter.set_tensor(interpreter.get_input_details()[0]['index'], input_data)
+    interpreter.invoke()
+    return interpreter.get_tensor(interpreter.get_output_details()[0]['index'])
 
+start_time = time.time()
+for i in tqdm(range(x_test.shape[0])):
+    x_test_sample = x_test[i]
+    pred = tflite_predict(interpreter_noquant, x_test_sample)
+    y_pred.append(pred[0][0])
+
+print("---Pred time (noquant):  %s seconds ---" % (time.time() - start_time))
+    
+y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
+print("TPU accuracy (noquant): ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
+print("F1 score (noquant): ", f1_score(y_test, y_pred))
+
+#pred int quant
+def representative_dataset():
+  # To ensure full coverage of possible inputs, we use the whole train set
+  for i in range(x_train.shape[0]):
+    input_data = x_train[i, :, :].reshape((1, max_seq_len, 1))
+    input_data = tf.dtypes.cast(input_data, tf.float32)
+    yield [input_data]
+
+batch_size = 1
+model.input.set_shape((batch_size,) + model.input.shape[1:])
+
+def convert_to_tflite_int(model, filename):
+    
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+    
+    # This enables quantization
+    converter.optimizations = [tf.lite.Optimize.DEFAULT]
+    # This sets the representative dataset for quantization
+    converter.representative_dataset = representative_dataset
+    
+    # This ensures that if any ops can't be quantized, the converter throws an error
+    converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
+    # For full integer quantization, though supported types defaults to int8 only, we explicitly declare it for clarity
+    converter.target_spec.supported_types = [tf.int8]
+    
+    tflite_model = converter.convert()
+
+    # Save the model.
+    with open(filename, 'wb') as f:
+        f.write(tflite_model)
+
+model_tflite_filename = "model_int_quant.tflite"
+convert_to_tflite_int(model, model_tflite_filename)
+
+#Pred hybrid
+interpreter_int = tf.lite.Interpreter("model_int_quant.tflite")
+interpreter_int.allocate_tensors()
+
+y_pred = []
+
+def tflite_predict(interpreter, data):
+    input_data = data.reshape((1, max_seq_len, 1)).astype(np.float32)
+    interpreter.set_tensor(interpreter.get_input_details()[0]['index'], input_data)
+    interpreter.invoke()
+    return interpreter.get_tensor(interpreter.get_output_details()[0]['index'])
+
+start_time = time.time()
+for i in tqdm(range(x_test.shape[0])):
+    x_test_sample = x_test[i]
+    pred = tflite_predict(interpreter_noquant, x_test_sample)
+    y_pred.append(pred[0][0])
+
+print("---Pred time (int quant):  %s seconds ---" % (time.time() - start_time))
+    
+y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
+print("TPU accuracy (int quant): ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
+print("F1 score (int quant): ", f1_score(y_test, y_pred))
+
+"""
+#Prediction
+
+y_pred = model.predict(x_test)
+y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
+test_acc = np.sum(y_pred == y_test) / len(y_test)
+print("Test accuracy: ", test_acc)
+
+from sklearn.metrics import f1_score
+print("F1 score: ", f1_score(y_test, y_pred))
+"""
