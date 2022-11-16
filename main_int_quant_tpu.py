@@ -93,6 +93,15 @@ def load_tflite_model(modelpath):
     return interpreter
 
 # pred no quant
+def convert_to_tflite_noquant(model, filename):
+    # Convert the tensorflow model into a tflite file.
+    converter = tf.lite.TFLiteConverter.from_keras_model(model)
+
+    tflite_model = converter.convert()
+
+    # Save the model.
+    with open(filename, 'wb') as f:
+        f.write(tflite_model)
 
 model_tflite_filename = "model_no_quant.tflite"
 interpreter_noquant = load_tflite_model(model_tflite_filename)
@@ -138,11 +147,11 @@ for i in tqdm(range(x_test.shape[0])):
     pred = tflite_predict(interpreter_hybridquant, x_test_sample)
     y_pred.append(pred[0][0])
 
-print("---Pred time (noquant):  %s seconds ---" % (time.time() - start_time))
+print("---Pred time (hybrid):  %s seconds ---" % (time.time() - start_time))
     
 y_pred = np.array([1 if x > 0.5 else 0 for x in y_pred])
-print("TPU accuracy (noquant): ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
-print("F1 score (noquant): ", f1_score(y_test, y_pred))
+print("TPU accuracy (hybrid): ", 100 * np.sum(y_pred == y_test) / len(y_pred), "%")
+print("F1 score (hybrid): ", f1_score(y_test, y_pred))
 
 # pred int quant
 
