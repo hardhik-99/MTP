@@ -93,15 +93,6 @@ def load_tflite_model(modelpath):
     return interpreter
 
 # pred no quant
-def convert_to_tflite_noquant(model, filename):
-    # Convert the tensorflow model into a tflite file.
-    converter = tf.lite.TFLiteConverter.from_keras_model(model)
-
-    tflite_model = converter.convert()
-
-    # Save the model.
-    with open(filename, 'wb') as f:
-        f.write(tflite_model)
 
 model_tflite_filename = "model_no_quant.tflite"
 interpreter_noquant = load_tflite_model(model_tflite_filename)
